@@ -14,6 +14,8 @@ public interface SupportTicketRepository extends JpaRepository<SupportTicket, Lo
 
     long countByStatusIn(List<SupportTicket.Status> statuses);
 
+    boolean existsByCustomerId(Long customerId);
+
     @Query("SELECT t.status, COUNT(t) FROM SupportTicket t GROUP BY t.status")
     List<Object[]> countByStatus();
 

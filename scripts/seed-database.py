@@ -3,7 +3,7 @@
 
 import sqlite3
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 try:
@@ -19,6 +19,11 @@ SEED = 42
 random.seed(SEED)
 fake = Faker()
 Faker.seed(SEED)
+
+
+def utc_now() -> datetime:
+    """Current time as naive UTC, the zone the backend reads stored timestamps in."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def to_sqlite_timestamp(dt: datetime) -> str:
@@ -177,7 +182,7 @@ def seed_customers(conn: sqlite3.Connection, plan_ids: list[int], count: int = 5
     cursor = conn.cursor()
     customer_ids = []
     statuses = ["ACTIVE"] * 80 + ["SUSPENDED"] * 10 + ["CANCELLED"] * 10
-    now = datetime.now()
+    now = utc_now()
     
     print(f"Creating {count} customers...")
     
@@ -218,7 +223,7 @@ def seed_devices(conn: sqlite3.Connection, customer_ids: list[int], count: int =
     """Seed devices and return list of device IDs."""
     cursor = conn.cursor()
     device_ids = []
-    now = datetime.now()
+    now = utc_now()
     
     cursor.execute("SELECT id FROM customers WHERE status = 'ACTIVE'")
     active_customer_ids = [row[0] for row in cursor.fetchall()]
@@ -259,7 +264,7 @@ def seed_devices(conn: sqlite3.Connection, customer_ids: list[int], count: int =
             status = "LOST"
             assigned_at = None
         
-        created_at = datetime.now()
+        created_at = utc_now()
         cursor.execute("""
             INSERT INTO devices (imei, model, sim_number, customer_id, status, assigned_at, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -281,7 +286,7 @@ def seed_usage_records(conn: sqlite3.Connection, customer_ids: list[int], days: 
     cursor.execute("SELECT id FROM customers WHERE status = 'ACTIVE'")
     active_customer_ids = [row[0] for row in cursor.fetchall()]
     
-    now = datetime.now()
+    now = utc_now()
     usage_types = ["CALL", "DATA", "SMS"]
     records = []
     
@@ -336,7 +341,7 @@ def seed_support_tickets(conn: sqlite3.Connection, customer_ids: list[int], coun
     
     priorities = ["LOW"] * 20 + ["MEDIUM"] * 50 + ["HIGH"] * 25 + ["URGENT"] * 5
     statuses = ["OPEN"] * 30 + ["IN_PROGRESS"] * 25 + ["RESOLVED"] * 35 + ["CLOSED"] * 10
-    now = datetime.now()
+    now = utc_now()
     
     print(f"Creating {count} support tickets...")
     

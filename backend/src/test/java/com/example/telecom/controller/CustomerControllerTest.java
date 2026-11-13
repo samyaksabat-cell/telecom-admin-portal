@@ -4,6 +4,9 @@ import com.example.telecom.model.Customer;
 import com.example.telecom.model.Plan;
 import com.example.telecom.repository.CustomerRepository;
 import com.example.telecom.repository.PlanRepository;
+import com.example.telecom.repository.DeviceRepository;
+import com.example.telecom.repository.SupportTicketRepository;
+import com.example.telecom.repository.UsageRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
@@ -34,12 +37,17 @@ class CustomerControllerTest {
 
     private final CustomerRepository repository = mock(CustomerRepository.class);
     private final PlanRepository planRepository = mock(PlanRepository.class);
+    private final UsageRecordRepository usageRepository = mock(UsageRecordRepository.class);
+    private final SupportTicketRepository ticketRepository = mock(SupportTicketRepository.class);
+    private final DeviceRepository deviceRepository = mock(DeviceRepository.class);
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new CustomerController(repository, planRepository)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(
+                new CustomerController(repository, planRepository, usageRepository, ticketRepository, deviceRepository))
+                .build();
     }
 
     @Test
@@ -145,6 +153,46 @@ class CustomerControllerTest {
 
         mockMvc.perform(delete("/api/customers/404")).andExpect(status().isNotFound());
 
+        verify(repository, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void updateCustomerRejectsUnknownPlanWithoutChangingFields() throws Exception {
+        Customer existing = customer(1L, plan(2L, "Standard", "40.00"));
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        mockMvc.perform(put("/api/customers/1").contentType(MediaType.APPLICATION_JSON).content("""
+                {"firstName":"Changed","planId":99}
+                """)).andExpect(status().isBadRequest());
+
+        org.junit.jupiter.api.Assertions.assertEquals("First1", existing.getFirstName());
+        verify(repository, never()).save(any(Customer.class));
+    }
+
+    @Test
+    void deleteCustomerWithUsageReturnsConflict() throws Exception {
+        when(repository.existsById(1L)).thenReturn(true);
+        when(usageRepository.existsByCustomerId(1L)).thenReturn(true);
+        assertDeleteConflict();
+    }
+
+    @Test
+    void deleteCustomerWithTicketsReturnsConflict() throws Exception {
+        when(repository.existsById(1L)).thenReturn(true);
+        when(ticketRepository.existsByCustomerId(1L)).thenReturn(true);
+        assertDeleteConflict();
+    }
+
+    @Test
+    void deleteCustomerWithDevicesReturnsConflict() throws Exception {
+        when(repository.existsById(1L)).thenReturn(true);
+        when(deviceRepository.existsByCustomerId(1L)).thenReturn(true);
+        assertDeleteConflict();
+    }
+
+    private void assertDeleteConflict() throws Exception {
+        mockMvc.perform(delete("/api/customers/1")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").exists());
         verify(repository, never()).deleteById(anyLong());
     }
 

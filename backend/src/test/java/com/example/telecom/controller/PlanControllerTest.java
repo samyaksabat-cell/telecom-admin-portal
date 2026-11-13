@@ -2,6 +2,7 @@ package com.example.telecom.controller;
 
 import com.example.telecom.model.Plan;
 import com.example.telecom.repository.PlanRepository;
+import com.example.telecom.repository.CustomerRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
@@ -30,12 +31,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlanControllerTest {
 
     private final PlanRepository repository = mock(PlanRepository.class);
+    private final CustomerRepository customerRepository = mock(CustomerRepository.class);
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(new PlanController(repository)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new PlanController(repository, customerRepository)).build();
     }
 
     @Test
@@ -115,6 +117,17 @@ class PlanControllerTest {
         when(repository.existsById(404L)).thenReturn(false);
 
         mockMvc.perform(delete("/api/plans/404")).andExpect(status().isNotFound());
+
+        verify(repository, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void deletePlanWithCustomersReturnsConflict() throws Exception {
+        when(repository.existsById(4L)).thenReturn(true);
+        when(customerRepository.existsByPlanId(4L)).thenReturn(true);
+
+        mockMvc.perform(delete("/api/plans/4")).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").exists());
 
         verify(repository, never()).deleteById(anyLong());
     }

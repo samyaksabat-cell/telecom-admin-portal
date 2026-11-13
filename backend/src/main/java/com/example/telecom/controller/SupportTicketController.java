@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
@@ -92,11 +93,7 @@ public class SupportTicketController {
                 ticket.setPriority(SupportTicket.Priority.valueOf(request.priority()));
             }
             if (request.status() != null) {
-                SupportTicket.Status newStatus = SupportTicket.Status.valueOf(request.status());
-                ticket.setStatus(newStatus);
-                if (newStatus == SupportTicket.Status.RESOLVED || newStatus == SupportTicket.Status.CLOSED) {
-                    ticket.setResolvedAt(Instant.now());
-                }
+                applyStatus(ticket, SupportTicket.Status.valueOf(request.status()));
             }
             SupportTicket saved = repository.save(ticket);
             LOG.info("Ticket updated: id={}, status={}", saved.getId(), saved.getStatus());
@@ -117,6 +114,22 @@ public class SupportTicketController {
         repository.deleteById(id);
         LOG.info("Ticket deleted: id={}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    private static void applyStatus(SupportTicket ticket, SupportTicket.Status newStatus) {
+        boolean wasResolved = isResolved(ticket.getStatus());
+        ticket.setStatus(newStatus);
+        if (isResolved(newStatus)) {
+            if (!wasResolved || ticket.getResolvedAt() == null) {
+                ticket.setResolvedAt(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+            }
+        } else {
+            ticket.setResolvedAt(null);
+        }
+    }
+
+    private static boolean isResolved(SupportTicket.Status status) {
+        return status == SupportTicket.Status.RESOLVED || status == SupportTicket.Status.CLOSED;
     }
 
     public record TicketRequest(Long customerId, String subject, String description, String priority, String status) {
