@@ -37,11 +37,67 @@ A telecom user administration system built with Next.js and Spring Boot.
 ### Prerequisites
 
 - Node.js 22+
-- Java 21+
-- pnpm
+- JDK 21 (the Gradle toolchain requires Java 21, not just a JRE)
+- pnpm 10.33.4
 - Python 3 (for database seeding)
 
+### Managed runtime setup (recommended)
+
+The repository's `mise.toml` installs Node 22, Eclipse Temurin JDK 21, and the
+pnpm version used in CI. This works even when Java is not installed on the host.
+Install [mise](https://mise.jdx.dev/getting-started.html), then run from the
+repository root:
+
+```bash
+mise trust
+mise install
+mise exec -- pnpm install --frozen-lockfile
+mise run test:smoke
+```
+
+The smoke check lists frontend tests without executing them, then executes
+`InstantTextConverterTest` (three backend unit tests). It does not run the full
+suite, start application servers, or require Python or a seeded database.
+The first run needs network access to download runtimes, Gradle, and dependencies.
+
+`mise run` and `mise exec --` set both `PATH` and `JAVA_HOME` for the selected JDK,
+without requiring shell activation. Prefix the other commands below with
+`mise exec --` when using this setup, for example `mise exec -- pnpm test:backend`.
+
+If managing runtimes yourself, set `JAVA_HOME` to your JDK 21 directory (not its
+`bin` directory), and add `$JAVA_HOME/bin` to `PATH`. On macOS, the JDK directory
+is typically the installation's `Contents/Home`. Check `java -version` and
+`javac -version` before running Gradle. If Gradle reports that `JAVA_HOME` is
+unset or Java is missing, use the managed setup above or correct these variables.
+
 ### Setup
+
+#### Dev Container (recommended)
+
+Install Docker and the VS Code Dev Containers extension, then run
+**Dev Containers: Reopen in Container** from the command palette. The container
+provides Java 21, Node.js 22, pnpm 10.33.4 (matching `package.json`), Python 3.12,
+and TypeScript, Java, Python, ESLint, and Prettier editor extensions.
+
+The first creation installs the locked Node dependencies and the Python seeder
+dependencies into `.devcontainer/.venv`. The Python environment is selected
+automatically in container terminals, so no manual activation is needed.
+The backend uses the checked-in Gradle wrapper.
+
+In the container terminal, seed demo data when needed, then start both services:
+
+```bash
+pnpm setup:db
+pnpm dev
+```
+
+Ports 3000 (frontend) and 8080 (backend) are forwarded to localhost. Keep forwarded
+ports private, since the API is unauthenticated. Container creation and reopening
+do not seed or reset the database; `pnpm setup:db` replaces existing demo data.
+Rebuild the container after changing its toolchain configuration. Run
+`bash .devcontainer/setup.sh` to reinstall dependencies without rebuilding.
+
+#### Local setup
 
 ```bash
 python3 -m venv .venv
@@ -55,6 +111,61 @@ Or install without seeding:
 ```bash
 pnpm install
 ```
+
+### Environment Variables
+
+No credentials or external services are required for local development. All
+environment variables below are optional; the app works with the listed defaults.
+The committed [`.env.example`](.env.example) contains safe local values:
+
+```bash
+cp .env.example .env.local
+```
+
+Run this once from the repository root, without overwriting an existing local
+configuration. Keep secrets out of `.env.example`; `.env.local` is git-ignored.
+
+| Variable                | Default                 | Used by                                                                             |
+| ----------------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| `BACKEND_URL`           | `http://localhost:8080` | Next.js server-side `/api` proxy and Playwright API tests/backend readiness check   |
+| `FRONTEND_URL`          | `http://localhost:3000` | Playwright browser target/frontend readiness check, not the frontend listening port |
+| `PORT`                  | `3000`                  | Next.js listening port                                                              |
+| `SERVER_PORT`           | `8080`                  | Spring Boot listening port                                                          |
+| `SPRING_DATASOURCE_URL` | `jdbc:sqlite:app.db`    | Spring Boot datasource override; normally leave unset                               |
+
+Use origins without `/api` or trailing slashes for `BACKEND_URL` and `FRONTEND_URL`.
+For local port changes, keep `BACKEND_URL` in sync with `SERVER_PORT` and
+`FRONTEND_URL` in sync with `PORT`. These URLs select targets; they do not change
+server ports. The API has no authentication, so keep it local and use only demo data.
+
+Next.js automatically loads `.env.local` for `BACKEND_URL`. Spring Boot and
+Playwright do **not** load it automatically, and Next.js needs `PORT` in the shell
+environment before startup. In a POSIX shell, export the file before running the
+combined app or browser tests:
+
+```bash
+# From the repository root, after editing your trusted local configuration:
+set -a
+. ./.env.local
+set +a
+pnpm dev
+# Or, in a shell with the same exported variables:
+# pnpm test:e2e
+```
+
+Use the same export step before `pnpm dev:backend` or `pnpm start` when overriding
+defaults. Restart development servers after changes. Next.js resolves API rewrites
+at build time for production, so set `BACKEND_URL` before `pnpm build` and rebuild
+when it changes.
+
+The default SQLite path resolves to `backend/app.db` when using the pnpm backend
+scripts. The Python seeder always writes that file, even if you override
+`SPRING_DATASOURCE_URL`; it will not seed a different database. No database username
+or password is needed.
+
+Leave `NODE_ENV` to Next.js (`development` for dev, `production` for build/start).
+CI sets `CI` for Playwright's stricter checks, retries, and server reuse policy;
+leave it unset for normal local development.
 
 ### Database Seeding
 
@@ -103,6 +214,19 @@ pnpm test:backend   # Gradle test
 pnpm test:e2e       # Playwright browser/API tests
 ```
 
+For a bounded check, use `mise run test:smoke`. With the prerequisites already
+configured manually, its individual commands are:
+
+```bash
+pnpm exec vitest list
+cd backend
+./gradlew --rerun-tasks test --tests com.example.telecom.InstantTextConverterTest
+```
+
+`--rerun-tasks` ensures the selected Java tests execute rather than being reported
+as up-to-date or restored from cache. Results are written to
+`backend/build/reports/tests/test/index.html`.
+
 ### Linting
 
 ```bash
@@ -127,6 +251,31 @@ application and running its configured checks. To run the backend build directly
 cd backend
 ./gradlew build
 ```
+
+### Backend logging
+
+The backend uses Spring Boot's built-in Logstash JSON console format. Each SLF4J
+event is one JSON line with `@timestamp`, `level`, `logger_name`, `thread_name`,
+and `message`. Exceptions appear in the escaped `stack_trace` field, so multiline
+messages and stack traces do not split records. The startup banner is disabled
+to keep application stdout machine-readable.
+
+Existing SLF4J calls need no changes. For searchable event fields, use SLF4J's
+fluent API, for example:
+
+```java
+LOG.atInfo().addKeyValue("event", "timestamp_migration")
+    .addKeyValue("updated_values", updated).log("Normalized legacy timestamps");
+```
+
+MDC fields are also included. Clear any MDC values in a `finally` block to avoid
+leaking context between requests. Never log customer details, request bodies,
+credentials, or tokens.
+
+Standard Spring Boot overrides still work, for example
+`LOGGING_LEVEL_COM_EXAMPLE_TELECOM=DEBUG` for application debug logs. If file
+logging is enabled with `LOGGING_FILE_NAME`, also set
+`LOGGING_STRUCTURED_FORMAT_FILE=logstash` to use the same JSON format there.
 
 ## Application Pages
 
