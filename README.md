@@ -151,6 +151,31 @@ as up-to-date or restored from cache. Results are written to
 pnpm lint
 ```
 
+### Backend logging
+
+The backend uses Spring Boot's built-in Logstash JSON console format. Each SLF4J
+event is one JSON line with `@timestamp`, `level`, `logger_name`, `thread_name`,
+and `message`. Exceptions appear in the escaped `stack_trace` field, so multiline
+messages and stack traces do not split records. The startup banner is disabled
+to keep application stdout machine-readable.
+
+Existing SLF4J calls need no changes. For searchable event fields, use SLF4J's
+fluent API, for example:
+
+```java
+LOG.atInfo().addKeyValue("event", "timestamp_migration")
+    .addKeyValue("updated_values", updated).log("Normalized legacy timestamps");
+```
+
+MDC fields are also included. Clear any MDC values in a `finally` block to avoid
+leaking context between requests. Never log customer details, request bodies,
+credentials, or tokens.
+
+Standard Spring Boot overrides still work, for example
+`LOGGING_LEVEL_COM_EXAMPLE_TELECOM=DEBUG` for application debug logs. If file
+logging is enabled with `LOGGING_FILE_NAME`, also set
+`LOGGING_STRUCTURED_FORMAT_FILE=logstash` to use the same JSON format there.
+
 ## Application Pages
 
 | Page      | URL          | Description           |
