@@ -1,0 +1,46 @@
+{
+  "name": "Telecom Admin Portal",
+  "image": "mcr.microsoft.com/devcontainers/java:1-21-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22",
+      "pnpmVersion": "10.33.4"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12",
+      "installTools": false
+    }
+  },
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "VIRTUAL_ENV": "${containerWorkspaceFolder}/.devcontainer/.venv",
+    "PATH": "${containerWorkspaceFolder}/.devcontainer/.venv/bin:${containerEnv:PATH}"
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [3000, 8080],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js frontend",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Spring Boot API",
+      "onAutoForward": "notify"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "vscjava.vscode-java-pack",
+        "ms-python.python"
+      ],
+      "settings": {
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "python.defaultInterpreterPath": "${workspaceFolder}/.devcontainer/.venv/bin/python"
+      }
+    }
+  }
+}

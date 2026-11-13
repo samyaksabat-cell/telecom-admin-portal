@@ -43,6 +43,33 @@ A telecom user administration system built with Next.js and Spring Boot.
 
 ### Setup
 
+#### Dev Container (recommended)
+
+Install Docker and the VS Code Dev Containers extension, then run
+**Dev Containers: Reopen in Container** from the command palette. The container
+provides Java 21, Node.js 22, pnpm 10.33.4 (matching `package.json`), Python 3.12,
+and TypeScript, Java, Python, ESLint, and Prettier editor extensions.
+
+The first creation installs the locked Node dependencies and the Python seeder
+dependencies into `.devcontainer/.venv`. The Python environment is selected
+automatically in container terminals, so no manual activation is needed.
+The backend uses the checked-in Gradle wrapper.
+
+In the container terminal, seed demo data when needed, then start both services:
+
+```bash
+pnpm setup:db
+pnpm dev
+```
+
+Ports 3000 (frontend) and 8080 (backend) are forwarded to localhost. Keep forwarded
+ports private, since the API is unauthenticated. Container creation and reopening
+do not seed or reset the database; `pnpm setup:db` replaces existing demo data.
+Rebuild the container after changing its toolchain configuration. Run
+`bash .devcontainer/setup.sh` to reinstall dependencies without rebuilding.
+
+#### Local setup
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
