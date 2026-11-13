@@ -11,6 +11,8 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     long countByStatus(Device.Status status);
 
+    boolean existsByCustomerId(Long customerId);
+
     @Query("SELECT d.status, COUNT(d) FROM Device d GROUP BY d.status")
     List<Object[]> countByStatus();
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { fetchCollection, requireOk } from "@/lib/api"
 
 export interface Customer {
   id: number
@@ -37,9 +38,7 @@ export function useCustomers() {
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/customers")
-      if (!res.ok) throw new Error("Failed to fetch customers")
-      const data = await res.json()
+      const data = await fetchCollection<Customer>("/api/customers", "Failed to fetch customers")
       setCustomers(data)
       setError(null)
     } catch (e) {
@@ -55,7 +54,7 @@ export function useCustomers() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(customer),
     })
-    if (!res.ok) throw new Error("Failed to create customer")
+    await requireOk(res, "Failed to create customer")
     const newCustomer = await res.json()
     setCustomers((prev) => [...prev, newCustomer])
     return newCustomer
@@ -67,7 +66,7 @@ export function useCustomers() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(customer),
     })
-    if (!res.ok) throw new Error("Failed to update customer")
+    await requireOk(res, "Failed to update customer")
     const updated = await res.json()
     setCustomers((prev) => prev.map((c) => (c.id === id ? updated : c)))
     return updated
@@ -77,7 +76,7 @@ export function useCustomers() {
     const res = await fetch(`/api/customers/${id}`, {
       method: "DELETE",
     })
-    if (!res.ok) throw new Error("Failed to delete customer")
+    await requireOk(res, "Failed to delete customer")
     setCustomers((prev) => prev.filter((c) => c.id !== id))
   }, [])
 

@@ -4,6 +4,9 @@ spring:
   datasource:
     url: jdbc:sqlite:app.db
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite ignores foreign keys unless each connection opts in.
+      connection-init-sql: PRAGMA foreign_keys = ON
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:

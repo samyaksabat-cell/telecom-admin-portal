@@ -3,15 +3,23 @@ package com.example.telecom.controller;
 import com.example.telecom.model.Customer;
 import com.example.telecom.model.Plan;
 import com.example.telecom.repository.CustomerRepository;
+import com.example.telecom.repository.DeviceRepository;
 import com.example.telecom.repository.PlanRepository;
+import com.example.telecom.repository.SupportTicketRepository;
+import com.example.telecom.repository.UsageRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -21,19 +29,30 @@ public class CustomerController {
 
     private final CustomerRepository repository;
     private final PlanRepository planRepository;
+    private final UsageRecordRepository usageRecordRepository;
+    private final SupportTicketRepository ticketRepository;
+    private final DeviceRepository deviceRepository;
 
-    public CustomerController(CustomerRepository repository, PlanRepository planRepository) {
+    public CustomerController(CustomerRepository repository, PlanRepository planRepository,
+            UsageRecordRepository usageRecordRepository, SupportTicketRepository ticketRepository,
+            DeviceRepository deviceRepository) {
         this.repository = repository;
         this.planRepository = planRepository;
+        this.usageRecordRepository = usageRecordRepository;
+        this.ticketRepository = ticketRepository;
+        this.deviceRepository = deviceRepository;
     }
 
     @GetMapping
-    public List<CustomerResponse> getAllCustomers() {
+    public ResponseEntity<List<CustomerResponse>> getAllCustomers(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1000") int size) {
         LOG.info("Fetching all customers");
-        List<CustomerResponse> customers = repository.findAll(PageRequest.of(0, 1000)).stream()
-                .map(CustomerResponse::from).toList();
+        Page<Customer> result = repository
+                .findAll(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 1000)), Sort.by("id")));
+        List<CustomerResponse> customers = result.stream().map(CustomerResponse::from).toList();
         LOG.debug("Found {} customers", customers.size());
-        return customers;
+        return ResponseEntity.ok().header("X-Has-Next", Boolean.toString(result.hasNext()))
+                .header("X-Total-Count", Long.toString(result.getTotalElements())).body(customers);
     }
 
     @GetMapping("/{id}")
@@ -51,6 +70,9 @@ public class CustomerController {
     @PostMapping
     public ResponseEntity<CustomerResponse> createCustomer(@RequestBody CustomerRequest request) {
         LOG.info("Creating customer");
+        if (request.planId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
         Plan plan = planRepository.findById(request.planId()).orElse(null);
         if (plan == null) {
             LOG.warn("Plan not found for customer creation: planId={}", request.planId());
@@ -70,39 +92,56 @@ public class CustomerController {
     public ResponseEntity<CustomerResponse> updateCustomer(@PathVariable Long id,
             @RequestBody CustomerRequest request) {
         LOG.info("Updating customer: id={}", id);
-        return repository.findById(id).map(customer -> {
-            customer.setFirstName(request.firstName());
-            customer.setLastName(request.lastName());
-            customer.setEmail(request.email());
-            customer.setPhone(request.phone());
-            if (request.planId() != null) {
-                planRepository.findById(request.planId()).ifPresent(customer::setPlan);
-            }
-            if (request.status() != null) {
-                customer.setStatus(Customer.Status.valueOf(request.status()));
-            }
-            if (request.balance() != null) {
-                customer.setBalance(request.balance());
-            }
-            Customer saved = repository.save(customer);
-            LOG.info("Customer updated: id={}", saved.getId());
-            return ResponseEntity.ok(CustomerResponse.from(saved));
-        }).orElseGet(() -> {
+        Optional<Customer> existing = repository.findById(id);
+        if (existing.isEmpty()) {
             LOG.warn("Customer not found for update: id={}", id);
             return ResponseEntity.notFound().build();
-        });
+        }
+        Optional<Plan> plan = Optional.empty();
+        if (request.planId() != null) {
+            plan = planRepository.findById(request.planId());
+            if (plan.isEmpty()) {
+                LOG.warn("Plan not found for customer update: planId={}", request.planId());
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        Customer customer = existing.get();
+        customer.setFirstName(request.firstName());
+        customer.setLastName(request.lastName());
+        customer.setEmail(request.email());
+        customer.setPhone(request.phone());
+        plan.ifPresent(customer::setPlan);
+        if (request.status() != null) {
+            customer.setStatus(Customer.Status.valueOf(request.status()));
+        }
+        if (request.balance() != null) {
+            customer.setBalance(request.balance());
+        }
+        Customer saved = repository.save(customer);
+        LOG.info("Customer updated: id={}", saved.getId());
+        return ResponseEntity.ok(CustomerResponse.from(saved));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
+    public ResponseEntity<ProblemDetail> deleteCustomer(@PathVariable Long id) {
         LOG.info("Deleting customer: id={}", id);
         if (!repository.existsById(id)) {
             LOG.warn("Customer not found for deletion: id={}", id);
             return ResponseEntity.notFound().build();
         }
+        if (hasHistory(id)) {
+            LOG.warn("Customer has history, refusing deletion: id={}", id);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                    "Customer has usage records, support tickets, or devices and cannot be deleted"));
+        }
         repository.deleteById(id);
         LOG.info("Customer deleted: id={}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean hasHistory(Long customerId) {
+        return usageRecordRepository.existsByCustomerId(customerId) || ticketRepository.existsByCustomerId(customerId)
+                || deviceRepository.existsByCustomerId(customerId);
     }
 
     public record CustomerRequest(String firstName, String lastName, String email, String phone, Long planId,

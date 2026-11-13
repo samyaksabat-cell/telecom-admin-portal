@@ -31,7 +31,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll"
 
 export default function UsagePage() {
   const [filters, setFilters] = useState<UsageFilters>({})
-  const { records, loading, loadingMore, error, hasNext, totalElements, loadMore } =
+  const { records, loading, loadingMore, error, hasNext, totalElements, loadMore, retry } =
     useUsage(filters)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -156,7 +156,14 @@ export default function UsagePage() {
                   Loading...
                 </div>
               ) : error ? (
-                <div className="py-8 text-center text-red-500">{error}</div>
+                <div className="space-y-3 py-8 text-center">
+                  <p role="alert" className="text-red-500">
+                    {error}
+                  </p>
+                  <Button variant="outline" disabled={loadingMore} onClick={() => void retry()}>
+                    Retry
+                  </Button>
+                </div>
               ) : (
                 <div ref={scrollRef} className="h-full overflow-auto">
                   <UsageTable records={records} />

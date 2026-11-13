@@ -11,7 +11,7 @@
     "build:backend": "cd backend && ./gradlew build",
     "start": "concurrently \"pnpm start:frontend\" \"pnpm start:backend\"",
     "start:frontend": "next start",
-    "start:backend": "cd backend && java -jar build/libs/*.jar",
+    "start:backend": "cd backend && java -jar build/libs/telecom-demo-0.0.1-SNAPSHOT.jar",
     "test": "pnpm test:frontend && pnpm test:backend",
     "test:frontend": "vitest run",
     "test:frontend:coverage": "vitest run --coverage",
@@ -26,7 +26,7 @@
     "format:check": "prettier --check . && cd backend && ./gradlew formatCheck",
     "format:frontend": "prettier --write .",
     "format:backend": "cd backend && ./gradlew format",
-    "setup": "pnpm install --frozen-lockfile && pnpm setup:db",
+    "bootstrap": "pnpm install --frozen-lockfile && pnpm setup:db",
     "setup:db": "python3 scripts/seed-database.py",
     "reset:db": "rm -f backend/app.db && pnpm setup:db",
     "prepare": "husky"

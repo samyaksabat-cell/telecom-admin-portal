@@ -2,6 +2,7 @@ package com.example.telecom.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "support_tickets")
@@ -26,8 +27,8 @@ public class SupportTicket {
     @Column(nullable = false)
     private String subject;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String description = "";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -49,16 +50,16 @@ public class SupportTicket {
     public SupportTicket(Customer customer, String subject, String description, Priority priority) {
         this.customer = customer;
         this.subject = subject;
-        this.description = description;
+        this.description = description == null ? "" : description;
         this.priority = priority;
         this.status = Status.OPEN;
-        this.createdAt = Instant.now();
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
-            this.createdAt = Instant.now();
+            this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         }
     }
 
@@ -91,7 +92,7 @@ public class SupportTicket {
     }
 
     public void setDescription(String description) {
-        this.description = description;
+        this.description = description == null ? "" : description;
     }
 
     public Priority getPriority() {

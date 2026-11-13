@@ -4,6 +4,10 @@ spring:
   datasource:
     url: "jdbc:sqlite::memory:"
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      # SQLite ignores foreign keys unless each connection opts in.
+      connection-init-sql: PRAGMA foreign_keys = ON
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:

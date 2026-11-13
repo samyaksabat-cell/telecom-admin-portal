@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { fetchCollection, requireOk } from "@/lib/api"
 
 export interface Plan {
   id: number
@@ -32,9 +33,7 @@ export function usePlans() {
   const fetchPlans = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/plans")
-      if (!res.ok) throw new Error("Failed to fetch plans")
-      const data = await res.json()
+      const data = await fetchCollection<Plan>("/api/plans", "Failed to fetch plans")
       setPlans(data)
       setError(null)
     } catch (e) {
@@ -50,7 +49,7 @@ export function usePlans() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(plan),
     })
-    if (!res.ok) throw new Error("Failed to create plan")
+    await requireOk(res, "Failed to create plan")
     const newPlan = await res.json()
     setPlans((prev) => [...prev, newPlan])
     return newPlan
@@ -62,7 +61,7 @@ export function usePlans() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(plan),
     })
-    if (!res.ok) throw new Error("Failed to update plan")
+    await requireOk(res, "Failed to update plan")
     const updated = await res.json()
     setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)))
     return updated
@@ -72,7 +71,7 @@ export function usePlans() {
     const res = await fetch(`/api/plans/${id}`, {
       method: "DELETE",
     })
-    if (!res.ok) throw new Error("Failed to delete plan")
+    await requireOk(res, "Failed to delete plan")
     setPlans((prev) => prev.filter((p) => p.id !== id))
   }, [])
 

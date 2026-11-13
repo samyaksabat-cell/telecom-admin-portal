@@ -77,4 +77,24 @@ describe("useDashboardStats", () => {
 
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(10)
   })
+
+  it.each(Object.keys(payloads).filter((url) => url !== "/api/dashboard/stats"))(
+    "handles a failed chart endpoint without storing its JSON object: %s",
+    async (failedUrl) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) => ({
+          ok: url !== failedUrl,
+          json: async () => (url === failedUrl ? { detail: "Unavailable" } : payloads[url]),
+        }))
+      )
+      const { result } = renderHook(() => useDashboardStats())
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      expect(result.current.error).toBe("Failed to fetch stats")
+      expect(result.current.customersByPlan).toEqual([])
+      expect(result.current.devicesByStatus).toEqual([])
+      expect(result.current.ticketsByStatus).toEqual([])
+      expect(result.current.revenueByPlan).toEqual([])
+    }
+  )
 })

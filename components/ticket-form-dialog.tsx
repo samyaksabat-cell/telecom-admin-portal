@@ -45,10 +45,12 @@ function TicketForm({
   const [priority, setPriority] = useState(ticket?.priority ?? "MEDIUM")
   const [status, setStatus] = useState(ticket?.status ?? "OPEN")
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setSubmitError(null)
     try {
       if (isEditing) {
         const data: TicketUpdate = {
@@ -68,6 +70,8 @@ function TicketForm({
         await onSubmit(data)
       }
       onCancel()
+    } catch (failure) {
+      setSubmitError(failure instanceof Error ? failure.message : "Failed to save record")
     } finally {
       setSubmitting(false)
     }
@@ -83,6 +87,11 @@ function TicketForm({
             : "Fill in the details to create a new support ticket."}
         </DialogDescription>
       </DialogHeader>
+      {submitError && (
+        <p role="alert" className="text-sm text-red-500">
+          {submitError}
+        </p>
+      )}
       <div className="grid gap-4 py-4">
         {!isEditing && (
           <div className="space-y-2">

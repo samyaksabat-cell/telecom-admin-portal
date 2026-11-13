@@ -27,9 +27,10 @@ export function useInfiniteScroll({
   }, [scrollRef, loadMore, loading, hasNext, threshold])
 
   useEffect(() => {
+    // A loading/error view can replace the DOM node without changing the ref.
     const el = scrollRef.current
     if (!el) return
     el.addEventListener("scroll", handleScroll)
     return () => el.removeEventListener("scroll", handleScroll)
-  }, [scrollRef, handleScroll])
+  })
 }

@@ -23,16 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmation } from "@/components/delete-confirmation"
 import { Plus, X, Loader2 } from "lucide-react"
 import { HealthStatus } from "@/components/health-status"
 import { TicketsTable } from "@/components/tickets-table"
@@ -56,6 +47,7 @@ export default function TicketsPage() {
     hasNext,
     totalElements,
     loadMore,
+    retry,
     createTicket,
     updateTicket,
     deleteTicket,
@@ -227,7 +219,14 @@ export default function TicketsPage() {
                   Loading...
                 </div>
               ) : error ? (
-                <div className="py-8 text-center text-red-500">{error}</div>
+                <div className="space-y-3 py-8 text-center">
+                  <p role="alert" className="text-red-500">
+                    {error}
+                  </p>
+                  <Button variant="outline" disabled={loadingMore} onClick={() => void retry()}>
+                    Retry
+                  </Button>
+                </div>
               ) : (
                 <div ref={scrollRef} className="h-full overflow-auto">
                   <TicketsTable
@@ -259,21 +258,15 @@ export default function TicketsPage() {
           onSubmit={handleFormSubmit}
         />
 
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Ticket</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{ticketToDelete?.subject}&quot;? This action
-                cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteConfirmation
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Ticket"
+          onConfirm={handleDeleteConfirm}
+        >
+          Are you sure you want to delete &quot;{ticketToDelete?.subject}&quot;? This action cannot
+          be undone.
+        </DeleteConfirmation>
       </SidebarInset>
     </SidebarProvider>
   )

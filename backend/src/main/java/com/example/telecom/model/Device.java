@@ -2,6 +2,7 @@ package com.example.telecom.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "devices")
@@ -46,13 +47,13 @@ public class Device {
         this.model = model;
         this.simNumber = simNumber;
         this.status = Status.AVAILABLE;
-        this.createdAt = Instant.now();
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
-            this.createdAt = Instant.now();
+            this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         }
     }
 

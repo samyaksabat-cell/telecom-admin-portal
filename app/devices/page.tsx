@@ -14,16 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmation } from "@/components/delete-confirmation"
 import { Plus } from "lucide-react"
 import { HealthStatus } from "@/components/health-status"
 import { DevicesTable } from "@/components/devices-table"
@@ -121,21 +112,15 @@ export default function DevicesPage() {
           onSubmit={handleFormSubmit}
         />
 
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Device</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete {deviceToDelete?.model} ({deviceToDelete?.imei})?
-                This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteConfirmation
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Device"
+          onConfirm={handleDeleteConfirm}
+        >
+          Are you sure you want to delete {deviceToDelete?.model} ({deviceToDelete?.imei})? This
+          action cannot be undone.
+        </DeleteConfirmation>
       </SidebarInset>
     </SidebarProvider>
   )

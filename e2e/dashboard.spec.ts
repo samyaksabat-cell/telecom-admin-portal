@@ -21,9 +21,10 @@ test.describe("Dashboard", () => {
   })
 
   test("should display charts", async ({ page }) => {
-    await page.waitForTimeout(1000)
-    const charts = page.locator(".recharts-wrapper, [class*='chart']")
-    const chartCount = await charts.count()
-    expect(chartCount).toBeGreaterThanOrEqual(0)
+    const charts = page.locator(".recharts-wrapper")
+    await expect(charts).toHaveCount(4)
+    for (const chart of await charts.all()) {
+      await expect(chart.locator("svg").first()).toBeVisible()
+    }
   })
 })

@@ -1,10 +1,15 @@
 package com.example.telecom.controller;
 
 import com.example.telecom.model.Plan;
+import com.example.telecom.repository.CustomerRepository;
 import com.example.telecom.repository.PlanRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,17 +23,23 @@ public class PlanController {
     private static final Logger LOG = LoggerFactory.getLogger(PlanController.class);
 
     private final PlanRepository repository;
+    private final CustomerRepository customerRepository;
 
-    public PlanController(PlanRepository repository) {
+    public PlanController(PlanRepository repository, CustomerRepository customerRepository) {
         this.repository = repository;
+        this.customerRepository = customerRepository;
     }
 
     @GetMapping
-    public List<PlanResponse> getAllPlans() {
+    public ResponseEntity<List<PlanResponse>> getAllPlans(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
         LOG.info("Fetching all plans");
-        List<PlanResponse> plans = repository.findAll(PageRequest.of(0, 100)).stream().map(PlanResponse::from).toList();
+        Page<Plan> result = repository
+                .findAll(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 1000)), Sort.by("id")));
+        List<PlanResponse> plans = result.stream().map(PlanResponse::from).toList();
         LOG.debug("Found {} plans", plans.size());
-        return plans;
+        return ResponseEntity.ok().header("X-Has-Next", Boolean.toString(result.hasNext()))
+                .header("X-Total-Count", Long.toString(result.getTotalElements())).body(plans);
     }
 
     @GetMapping("/active")
@@ -83,11 +94,16 @@ public class PlanController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePlan(@PathVariable Long id) {
+    public ResponseEntity<ProblemDetail> deletePlan(@PathVariable Long id) {
         LOG.info("Deleting plan: id={}", id);
         if (!repository.existsById(id)) {
             LOG.warn("Plan not found for deletion: id={}", id);
             return ResponseEntity.notFound().build();
+        }
+        if (customerRepository.existsByPlanId(id)) {
+            LOG.warn("Plan still has customers, refusing deletion: id={}", id);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                    "Plan still has customers; move them to another plan before deleting it"));
         }
         repository.deleteById(id);
         LOG.info("Plan deleted: id={}", id);

@@ -3,6 +3,7 @@ package com.example.telecom.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "customers")
@@ -56,14 +57,14 @@ public class Customer {
         this.plan = plan;
         this.status = Status.ACTIVE;
         this.balance = BigDecimal.ZERO;
-        this.activatedAt = Instant.now();
-        this.createdAt = Instant.now();
+        this.activatedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     }
 
     @PrePersist
     public void prePersist() {
         if (this.createdAt == null) {
-            this.createdAt = Instant.now();
+            this.createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         }
     }
 

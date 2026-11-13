@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { fetchCollection, requireOk } from "@/lib/api"
 
 export interface Device {
   id: number
@@ -33,9 +34,7 @@ export function useDevices() {
   const fetchDevices = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await fetch("/api/devices")
-      if (!res.ok) throw new Error("Failed to fetch devices")
-      const data = await res.json()
+      const data = await fetchCollection<Device>("/api/devices", "Failed to fetch devices")
       setDevices(data)
       setError(null)
     } catch (e) {
@@ -51,7 +50,7 @@ export function useDevices() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(device),
     })
-    if (!res.ok) throw new Error("Failed to create device")
+    await requireOk(res, "Failed to create device")
     const newDevice = await res.json()
     setDevices((prev) => [...prev, newDevice])
     return newDevice
@@ -63,7 +62,7 @@ export function useDevices() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(device),
     })
-    if (!res.ok) throw new Error("Failed to update device")
+    await requireOk(res, "Failed to update device")
     const updated = await res.json()
     setDevices((prev) => prev.map((d) => (d.id === id ? updated : d)))
     return updated
@@ -73,7 +72,7 @@ export function useDevices() {
     const res = await fetch(`/api/devices/${id}`, {
       method: "DELETE",
     })
-    if (!res.ok) throw new Error("Failed to delete device")
+    await requireOk(res, "Failed to delete device")
     setDevices((prev) => prev.filter((d) => d.id !== id))
   }, [])
 
