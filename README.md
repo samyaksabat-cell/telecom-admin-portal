@@ -233,6 +233,25 @@ as up-to-date or restored from cache. Results are written to
 pnpm lint
 ```
 
+### Building
+
+After installing the dependencies, build the frontend and backend from the
+repository root:
+
+```bash
+pnpm build          # Build the frontend production bundle
+pnpm build:backend  # Build the backend with the Gradle wrapper
+```
+
+`pnpm build` runs the Next.js production build. `pnpm build:backend` runs
+`./gradlew build` in `backend/`, compiling and packaging the Spring Boot
+application and running its configured checks. To run the backend build directly:
+
+```bash
+cd backend
+./gradlew build
+```
+
 ### Backend logging
 
 The backend uses Spring Boot's built-in Logstash JSON console format. Each SLF4J
