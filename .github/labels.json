@@ -1,0 +1,57 @@
+[
+  {
+    "name": "priority:P0",
+    "color": "b60205",
+    "description": "Critical: outage, data loss, or security emergency; address immediately."
+  },
+  {
+    "name": "priority:P1",
+    "color": "d93f0b",
+    "description": "High: major workflow blocked with no reasonable workaround; next available work."
+  },
+  {
+    "name": "priority:P2",
+    "color": "fbca04",
+    "description": "Normal: useful improvement or defect with a workaround; schedule in normal planning."
+  },
+  {
+    "name": "priority:P3",
+    "color": "c2e0c6",
+    "description": "Low: minor polish or optional improvement; work when capacity permits."
+  },
+  {
+    "name": "type:bug",
+    "color": "d73a4a",
+    "description": "Existing behavior is incorrect or regressed."
+  },
+  {
+    "name": "type:feature",
+    "color": "a2eeef",
+    "description": "New capability or enhancement to existing behavior."
+  },
+  {
+    "name": "type:chore",
+    "color": "ededed",
+    "description": "Maintenance, documentation, dependency updates, or tooling work."
+  },
+  {
+    "name": "area:frontend",
+    "color": "1d76db",
+    "description": "Next.js pages, React components, hooks, client utilities, or browser tests."
+  },
+  {
+    "name": "area:backend",
+    "color": "5319e7",
+    "description": "Spring Boot API, persistence, database seeding, or backend tests."
+  },
+  {
+    "name": "area:infra",
+    "color": "006b75",
+    "description": "CI workflows, build tooling, runtime setup, or repository automation."
+  },
+  {
+    "name": "area:docs",
+    "color": "0075ca",
+    "description": "README, contributor guidance, API documentation, or other written docs."
+  }
+]

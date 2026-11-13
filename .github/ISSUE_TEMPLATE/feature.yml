@@ -1,0 +1,24 @@
+name: Feature request
+description: Propose a new capability or improvement
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and impact
+      description: Describe the use case and who benefits. Use demo data only.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution and alternatives
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we verify the improvement is complete?
+    validations:
+      required: true
