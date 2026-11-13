@@ -174,15 +174,14 @@ class EditBehaviorTest {
     }
 
     private static String deviceBody(String status, Long customerId) {
-        return """
-                {"imei":"imei","model":"model","simNumber":"sim","customerId":%d,"status":%s}
-                """.formatted(customerId, status == null ? "null" : "\"" + status + "\"");
+        return "{\"imei\":\"imei\",\"model\":\"model\",\"simNumber\":\"sim\",\"customerId\":%d,\"status\":%s}"
+                .formatted(customerId, status == null ? "null" : "\"" + status + "\"");
     }
 
     private void updateTicket(String status) throws Exception {
-        mvc.perform(put("/api/tickets/1").contentType(MediaType.APPLICATION_JSON).content("""
-                {"subject":"Edited","description":"Edited","status":"%s"}
-                """.formatted(status))).andExpect(status().isOk());
+        mvc.perform(put("/api/tickets/1").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"subject\":\"Edited\",\"description\":\"Edited\",\"status\":\"%s\"}".formatted(status)))
+                .andExpect(status().isOk());
     }
 
     private static Customer customer(Long id) {
