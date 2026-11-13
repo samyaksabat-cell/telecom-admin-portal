@@ -112,6 +112,61 @@ Or install without seeding:
 pnpm install
 ```
 
+### Environment Variables
+
+No credentials or external services are required for local development. All
+environment variables below are optional; the app works with the listed defaults.
+The committed [`.env.example`](.env.example) contains safe local values:
+
+```bash
+cp .env.example .env.local
+```
+
+Run this once from the repository root, without overwriting an existing local
+configuration. Keep secrets out of `.env.example`; `.env.local` is git-ignored.
+
+| Variable                | Default                 | Used by                                                                             |
+| ----------------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| `BACKEND_URL`           | `http://localhost:8080` | Next.js server-side `/api` proxy and Playwright API tests/backend readiness check   |
+| `FRONTEND_URL`          | `http://localhost:3000` | Playwright browser target/frontend readiness check, not the frontend listening port |
+| `PORT`                  | `3000`                  | Next.js listening port                                                              |
+| `SERVER_PORT`           | `8080`                  | Spring Boot listening port                                                          |
+| `SPRING_DATASOURCE_URL` | `jdbc:sqlite:app.db`    | Spring Boot datasource override; normally leave unset                               |
+
+Use origins without `/api` or trailing slashes for `BACKEND_URL` and `FRONTEND_URL`.
+For local port changes, keep `BACKEND_URL` in sync with `SERVER_PORT` and
+`FRONTEND_URL` in sync with `PORT`. These URLs select targets; they do not change
+server ports. The API has no authentication, so keep it local and use only demo data.
+
+Next.js automatically loads `.env.local` for `BACKEND_URL`. Spring Boot and
+Playwright do **not** load it automatically, and Next.js needs `PORT` in the shell
+environment before startup. In a POSIX shell, export the file before running the
+combined app or browser tests:
+
+```bash
+# From the repository root, after editing your trusted local configuration:
+set -a
+. ./.env.local
+set +a
+pnpm dev
+# Or, in a shell with the same exported variables:
+# pnpm test:e2e
+```
+
+Use the same export step before `pnpm dev:backend` or `pnpm start` when overriding
+defaults. Restart development servers after changes. Next.js resolves API rewrites
+at build time for production, so set `BACKEND_URL` before `pnpm build` and rebuild
+when it changes.
+
+The default SQLite path resolves to `backend/app.db` when using the pnpm backend
+scripts. The Python seeder always writes that file, even if you override
+`SPRING_DATASOURCE_URL`; it will not seed a different database. No database username
+or password is needed.
+
+Leave `NODE_ENV` to Next.js (`development` for dev, `production` for build/start).
+CI sets `CI` for Playwright's stricter checks, retries, and server reuse policy;
+leave it unset for normal local development.
+
 ### Database Seeding
 
 The Python seeder (`scripts/seed-database.py`) generates production-like data:
