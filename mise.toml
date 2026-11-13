@@ -1,0 +1,11 @@
+[tools]
+java = "temurin-21"
+node = "22"
+pnpm = "10.33.4"
+
+[tasks."test:smoke"]
+description = "Collect frontend tests and execute one backend unit test class"
+run = [
+  "pnpm exec vitest list",
+  "cd backend && ./gradlew --rerun-tasks test --tests com.example.telecom.InstantTextConverterTest",
+]

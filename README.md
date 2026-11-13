@@ -37,9 +37,38 @@ A telecom user administration system built with Next.js and Spring Boot.
 ### Prerequisites
 
 - Node.js 22+
-- Java 21+
-- pnpm
+- JDK 21 (the Gradle toolchain requires Java 21, not just a JRE)
+- pnpm 10.33.4
 - Python 3 (for database seeding)
+
+### Managed runtime setup (recommended)
+
+The repository's `mise.toml` installs Node 22, Eclipse Temurin JDK 21, and the
+pnpm version used in CI. This works even when Java is not installed on the host.
+Install [mise](https://mise.jdx.dev/getting-started.html), then run from the
+repository root:
+
+```bash
+mise trust
+mise install
+mise exec -- pnpm install --frozen-lockfile
+mise run test:smoke
+```
+
+The smoke check lists frontend tests without executing them, then executes
+`InstantTextConverterTest` (three backend unit tests). It does not run the full
+suite, start application servers, or require Python or a seeded database.
+The first run needs network access to download runtimes, Gradle, and dependencies.
+
+`mise run` and `mise exec --` set both `PATH` and `JAVA_HOME` for the selected JDK,
+without requiring shell activation. Prefix the other commands below with
+`mise exec --` when using this setup, for example `mise exec -- pnpm test:backend`.
+
+If managing runtimes yourself, set `JAVA_HOME` to your JDK 21 directory (not its
+`bin` directory), and add `$JAVA_HOME/bin` to `PATH`. On macOS, the JDK directory
+is typically the installation's `Contents/Home`. Check `java -version` and
+`javac -version` before running Gradle. If Gradle reports that `JAVA_HOME` is
+unset or Java is missing, use the managed setup above or correct these variables.
 
 ### Setup
 
@@ -102,6 +131,19 @@ pnpm test:frontend  # Vitest
 pnpm test:backend   # Gradle test
 pnpm test:e2e       # Playwright browser/API tests
 ```
+
+For a bounded check, use `mise run test:smoke`. With the prerequisites already
+configured manually, its individual commands are:
+
+```bash
+pnpm exec vitest list
+cd backend
+./gradlew --rerun-tasks test --tests com.example.telecom.InstantTextConverterTest
+```
+
+`--rerun-tasks` ensures the selected Java tests execute rather than being reported
+as up-to-date or restored from cache. Results are written to
+`backend/build/reports/tests/test/index.html`.
 
 ### Linting
 
