@@ -1,0 +1,27 @@
+name: Bug report
+description: Report incorrect or regressed behavior
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Use demo data only. Do not include customer details, tokens, or credentials. Maintainers assign priority and area labels during triage."
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the page or API endpoint, steps, and relevant environment.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and workaround
+      description: What is blocked? Is there a workaround?
+    validations:
+      required: true
