@@ -1,0 +1,97 @@
+name: Bug report
+description: Report a reproducible problem with the telecom demo portal.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before submitting a new report.
+        Use generated demo data only. Remove credentials, customer information,
+        phone numbers, SIM identifiers, and other personal data from logs and screenshots.
+        For suspected vulnerabilities, follow the [security policy](https://github.com/samyaksabat-cell/telecom-admin-portal/blob/main/SECURITY.md) instead of opening a public issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Dashboard
+        - Customers
+        - Plans
+        - Devices and SIM inventory
+        - Usage records
+        - Support tickets
+        - Backend API or database
+        - Setup, seeding, build, or tests
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Include the page or API endpoint, commands or request payload, and starting
+        demo data state (freshly seeded, existing, or not seeded). Do not reset a
+        database you need to preserve just to file a report.
+      placeholder: |
+        1. Start both services with pnpm dev.
+        2. Open /devices with an existing demo database.
+        3. Edit a generated device and clear its customer assignment.
+        4. Save and observe the result.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: Describe what should happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what happened, including any error message or HTTP status.
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Commit or branch
+      description: Paste the output of git rev-parse HEAD, or identify the branch you tested.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Include OS, local/dev-container/mise setup, browser and version for UI bugs,
+        and relevant runtime versions (node --version, pnpm --version, java -version,
+        python3 --version). Note any non-default API URL without sharing secrets.
+        Mark items that do not apply as N/A.
+      placeholder: |
+        OS and setup method:
+        Browser:
+        Node.js / pnpm:
+        Java / Python:
+        Startup command and non-default configuration:
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs, screenshots, or failing tests
+      description: |
+        Optionally include browser console/network output, backend logs, screenshots,
+        or a failing test command and output. Review attachments for sensitive data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for this problem.
+          required: true
+        - label: This report and its attachments contain only demo data and no secrets or personal data.
+          required: true

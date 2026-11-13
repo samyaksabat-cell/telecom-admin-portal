@@ -1,0 +1,77 @@
+name: Feature request
+description: Propose an improvement with a clear use case and acceptance criteria.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before proposing an improvement.
+        This is a local, unauthenticated demo application. Use generated examples,
+        never real customer data or credentials.
+        For suspected vulnerabilities, follow the [security policy](https://github.com/samyaksabat-cell/telecom-admin-portal/blob/main/SECURITY.md) instead of opening a public issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Dashboard
+        - Customers
+        - Plans
+        - Devices and SIM inventory
+        - Usage records
+        - Support tickets
+        - Backend API or database
+        - Developer experience or documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Who needs this improvement, what are they trying to do, and what blocks them today?
+      placeholder: When reviewing generated demo tickets, an administrator needs to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: |
+        Describe the desired workflow. Identify affected pages or API endpoints
+        and any data model changes if known. Implementation details are optional.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or other approaches and their trade-offs.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: |
+        List observable outcomes that would make this complete, including relevant
+        empty states, error cases, or API behavior. Use concrete demo-data examples.
+      placeholder: |
+        - [ ] An administrator can...
+        - [ ] When no matching demo records exist...
+        - [ ] Existing workflows continue to...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optionally link related issues or add mockups using generated data only.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for this proposal.
+          required: true
+        - label: This request and its attachments contain only demo data and no secrets or personal data.
+          required: true
