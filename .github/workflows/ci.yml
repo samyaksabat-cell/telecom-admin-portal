@@ -16,6 +16,9 @@ concurrency:
 jobs:
   frontend:
     name: Frontend
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,6 +32,18 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
+
+      - name: Restore Next.js build cache
+        id: next-cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-node22-next-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-node22-next-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      - name: Test build performance tracking
+        run: python3 -m unittest discover -s scripts -p 'test_measure_build.py'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -58,10 +73,24 @@ jobs:
           retention-days: 30
 
       - name: Build
-        run: pnpm build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_CACHE_HIT: ${{ steps.next-cache.outputs.cache-hit }}
+        run: python3 scripts/measure_build.py --component frontend --output build-metrics/frontend/metrics.json -- pnpm build
+
+      - name: Upload frontend build performance
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: frontend-build-performance
+          path: build-metrics/frontend/
+          retention-days: 90
 
   backend:
     name: Backend
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -103,7 +132,25 @@ jobs:
           retention-days: 30
 
       - name: Build
-        run: ./gradlew build -x test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 ../scripts/measure_build.py --component backend --output ../build-metrics/backend/metrics.json -- ./gradlew build -x test --profile
+
+      - name: Upload backend build performance
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-build-performance
+          path: build-metrics/backend/
+          retention-days: 90
+
+      - name: Upload Gradle build profile
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gradle-build-profile
+          path: backend/build/reports/profile/
+          retention-days: 90
 
   e2e:
     name: E2E Tests
