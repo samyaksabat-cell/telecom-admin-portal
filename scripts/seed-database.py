@@ -306,7 +306,7 @@ def seed_usage_records(conn: sqlite3.Connection, customer_ids: list[int], days: 
                             range(24),
                             weights=[1, 1, 1, 1, 1, 2, 3, 5, 7, 8, 8, 7, 7, 7, 8, 8, 7, 6, 5, 4, 3, 2, 2, 1]
                         )[0]
-                        record_time = record_date.replace(hour=hour, minute=random.randint(0, 59))
+                        record_time = min(now, record_date.replace(hour=hour, minute=random.randint(0, 59)))
                         
                         if usage_type == "CALL":
                             quantity = random.randint(1, 45)

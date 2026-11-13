@@ -10,6 +10,8 @@ import com.example.telecom.repository.UsageRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -42,12 +44,15 @@ public class CustomerController {
     }
 
     @GetMapping
-    public List<CustomerResponse> getAllCustomers() {
+    public ResponseEntity<List<CustomerResponse>> getAllCustomers(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1000") int size) {
         LOG.info("Fetching all customers");
-        List<CustomerResponse> customers = repository.findAll(PageRequest.of(0, 1000)).stream()
-                .map(CustomerResponse::from).toList();
+        Page<Customer> result = repository
+                .findAll(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 1000)), Sort.by("id")));
+        List<CustomerResponse> customers = result.stream().map(CustomerResponse::from).toList();
         LOG.debug("Found {} customers", customers.size());
-        return customers;
+        return ResponseEntity.ok().header("X-Has-Next", Boolean.toString(result.hasNext()))
+                .header("X-Total-Count", Long.toString(result.getTotalElements())).body(customers);
     }
 
     @GetMapping("/{id}")
@@ -65,6 +70,9 @@ public class CustomerController {
     @PostMapping
     public ResponseEntity<CustomerResponse> createCustomer(@RequestBody CustomerRequest request) {
         LOG.info("Creating customer");
+        if (request.planId() == null) {
+            return ResponseEntity.badRequest().build();
+        }
         Plan plan = planRepository.findById(request.planId()).orElse(null);
         if (plan == null) {
             LOG.warn("Plan not found for customer creation: planId={}", request.planId());

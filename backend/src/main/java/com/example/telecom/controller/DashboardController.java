@@ -82,14 +82,14 @@ public class DashboardController {
     @GetMapping("/revenue-by-plan")
     public List<RevenueData> getRevenueByPlan() {
         LOG.info("Fetching revenue by plan chart data");
-        Map<String, Long> customerCounts = customerRepository.findByStatus(Customer.Status.ACTIVE).stream()
+        Map<Long, Long> customerCounts = customerRepository.findByStatus(Customer.Status.ACTIVE).stream()
                 .filter(c -> c.getPlan() != null)
-                .collect(Collectors.groupingBy(c -> c.getPlan().getName(), Collectors.counting()));
+                .collect(Collectors.groupingBy(c -> c.getPlan().getId(), Collectors.counting()));
 
         List<RevenueData> data = planRepository.findAll().stream()
-                .filter(plan -> customerCounts.containsKey(plan.getName()))
+                .filter(plan -> customerCounts.containsKey(plan.getId()))
                 .map(plan -> new RevenueData(plan.getName(),
-                        plan.getMonthlyPrice().multiply(BigDecimal.valueOf(customerCounts.get(plan.getName())))))
+                        plan.getMonthlyPrice().multiply(BigDecimal.valueOf(customerCounts.get(plan.getId())))))
                 .toList();
         LOG.debug("Found {} plans with revenue data", data.size());
         return data;

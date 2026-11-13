@@ -5,6 +5,7 @@ import com.example.telecom.controller.DeviceController;
 import com.example.telecom.controller.SupportTicketController;
 import com.example.telecom.model.*;
 import com.example.telecom.repository.*;
+import com.example.telecom.config.TimestampMigration;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,8 @@ class TimestampPersistenceTest {
     private DeviceController deviceController;
     @Autowired
     private SupportTicketController ticketController;
+    @Autowired
+    private TimestampMigration timestampMigration;
     private Customer customer;
 
     @BeforeEach
@@ -104,6 +107,64 @@ class TimestampPersistenceTest {
                 () -> jdbc.update("DELETE FROM customers WHERE id = ?", customer.getId()));
         assertEquals(1L, customers.count());
         assertEquals(1L, usage.count());
+    }
+
+    @Test
+    void omittedTicketDescriptionsPersistOnCreateAndUpdate() {
+        var request = new SupportTicketController.TicketRequest(customer.getId(), "Blank description", null, "LOW",
+                null);
+        var created = ticketController.createTicket(request).getBody();
+        assertNotNull(created);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals("", ticketController.getTicket(created.id()).getBody().description());
+        ticketController.updateTicket(created.id(), request);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals("", ticketController.getTicket(created.id()).getBody().description());
+    }
+
+    @Test
+    void legacyNumericTimestampsAreMigratedBeforeSqlOrderingAndFiltering() {
+        Instant legacy = Instant.parse("2025-01-02T12:34:56.123Z");
+        long epoch = legacy.toEpochMilli();
+        entityManager.flush();
+        jdbc.update("UPDATE customers SET created_at = ?, activated_at = ? WHERE id = ?", epoch, epoch,
+                customer.getId());
+        jdbc.update("""
+                INSERT INTO devices(imei, model, sim_number, status, created_at, assigned_at, customer_id)
+                VALUES ('legacy', 'Test', 'legacy', 'ASSIGNED', ?, ?, ?)
+                """, epoch, epoch, customer.getId());
+        jdbc.update(
+                """
+                        INSERT INTO support_tickets(customer_id, subject, description, priority, status, created_at, resolved_at)
+                        VALUES (?, 'Legacy', '', 'LOW', 'RESOLVED', ?, ?)
+                        """,
+                customer.getId(), epoch, epoch);
+        jdbc.update("""
+                INSERT INTO support_tickets(customer_id, subject, description, priority, status, created_at)
+                VALUES (?, 'Seeded', '', 'LOW', 'OPEN', '2024-01-01 00:00:00.000')
+                """, customer.getId());
+        jdbc.update("""
+                INSERT INTO usage_records(customer_id, type, quantity, cost, recorded_at) VALUES (?, 'DATA', 1, 0, ?)
+                """, customer.getId(), epoch);
+        insertSeededUsage("2025-01-03 00:00:00.000");
+        timestampMigration.afterPropertiesSet();
+        timestampMigration.afterPropertiesSet();
+        entityManager.clear();
+
+        assertEquals(legacy, customers.findById(customer.getId()).orElseThrow().getCreatedAt());
+        assertEquals(legacy, customers.findById(customer.getId()).orElseThrow().getActivatedAt());
+        assertEquals("Legacy",
+                tickets.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 1)).getContent().get(0).getSubject());
+        var filtered = usageController.getUsageRecords(0, 100, null, null, "2025-01-02", "2025-01-02");
+        assertEquals(1, filtered.totalElements());
+        assertEquals(legacy.toString(), filtered.content().get(0).recorded_at());
+        assertEquals("text", jdbc.queryForObject("SELECT typeof(created_at) FROM customers WHERE id = ?", String.class,
+                customer.getId()));
+        assertEquals("2025-01-02 12:34:56.123", jdbc.queryForObject("SELECT assigned_at FROM devices", String.class));
+        assertEquals("2025-01-02 12:34:56.123",
+                jdbc.queryForObject("SELECT resolved_at FROM support_tickets WHERE subject = 'Legacy'", String.class));
     }
 
     @Test

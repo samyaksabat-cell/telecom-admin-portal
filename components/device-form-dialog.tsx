@@ -44,10 +44,12 @@ function DeviceForm({
   const [customerId, setCustomerId] = useState(device?.customer_id?.toString() ?? "")
   const [status, setStatus] = useState(device?.status ?? "AVAILABLE")
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const data: DeviceCreate | DeviceUpdate = {
         imei,
@@ -58,6 +60,8 @@ function DeviceForm({
       }
       await onSubmit(data)
       onCancel()
+    } catch (failure) {
+      setSubmitError(failure instanceof Error ? failure.message : "Failed to save record")
     } finally {
       setSubmitting(false)
     }
@@ -73,6 +77,11 @@ function DeviceForm({
             : "Fill in the details to register a new device."}
         </DialogDescription>
       </DialogHeader>
+      {submitError && (
+        <p role="alert" className="text-sm text-red-500">
+          {submitError}
+        </p>
+      )}
       <div className="grid gap-4 py-4">
         <div className="space-y-2">
           <Label htmlFor="imei">IMEI</Label>

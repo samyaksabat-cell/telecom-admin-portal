@@ -50,10 +50,12 @@ function CustomerForm({
   const [status, setStatus] = useState(customer?.status ?? "ACTIVE")
   const [balance, setBalance] = useState(customer?.balance?.toString() ?? "0")
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const data: CustomerCreate | CustomerUpdate = {
         firstName,
@@ -66,6 +68,8 @@ function CustomerForm({
       }
       await onSubmit(data)
       onCancel()
+    } catch (failure) {
+      setSubmitError(failure instanceof Error ? failure.message : "Failed to save record")
     } finally {
       setSubmitting(false)
     }
@@ -81,6 +85,11 @@ function CustomerForm({
             : "Fill in the details to create a new customer."}
         </DialogDescription>
       </DialogHeader>
+      {submitError && (
+        <p role="alert" className="text-sm text-red-500">
+          {submitError}
+        </p>
+      )}
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

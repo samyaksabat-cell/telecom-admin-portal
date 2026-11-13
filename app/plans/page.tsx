@@ -14,16 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { DeleteConfirmation } from "@/components/delete-confirmation"
 import { Plus } from "lucide-react"
 import { HealthStatus } from "@/components/health-status"
 import { PlansTable } from "@/components/plans-table"
@@ -123,21 +114,15 @@ export default function PlansPage() {
           onSubmit={handleFormSubmit}
         />
 
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Plan</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{planToDelete?.name}&quot;? This action cannot
-                be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <DeleteConfirmation
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Plan"
+          onConfirm={handleDeleteConfirm}
+        >
+          Are you sure you want to delete &quot;{planToDelete?.name}&quot;? This action cannot be
+          undone.
+        </DeleteConfirmation>
       </SidebarInset>
     </SidebarProvider>
   )

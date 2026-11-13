@@ -6,6 +6,8 @@ import com.example.telecom.repository.PlanRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -29,11 +31,15 @@ public class PlanController {
     }
 
     @GetMapping
-    public List<PlanResponse> getAllPlans() {
+    public ResponseEntity<List<PlanResponse>> getAllPlans(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
         LOG.info("Fetching all plans");
-        List<PlanResponse> plans = repository.findAll(PageRequest.of(0, 100)).stream().map(PlanResponse::from).toList();
+        Page<Plan> result = repository
+                .findAll(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 1000)), Sort.by("id")));
+        List<PlanResponse> plans = result.stream().map(PlanResponse::from).toList();
         LOG.debug("Found {} plans", plans.size());
-        return plans;
+        return ResponseEntity.ok().header("X-Has-Next", Boolean.toString(result.hasNext()))
+                .header("X-Total-Count", Long.toString(result.getTotalElements())).body(plans);
     }
 
     @GetMapping("/active")

@@ -40,13 +40,16 @@ export function useDashboardStats() {
           fetch("/api/dashboard/revenue-by-plan"),
         ])
 
-      if (!statsRes.ok) throw new Error("Failed to fetch stats")
-
-      setStats(await statsRes.json())
-      setCustomersByPlan(await customersPlanRes.json())
-      setDevicesByStatus(await devicesStatusRes.json())
-      setTicketsByStatus(await ticketsStatusRes.json())
-      setRevenueByPlan(await revenueRes.json())
+      const responses = [statsRes, customersPlanRes, devicesStatusRes, ticketsStatusRes, revenueRes]
+      if (responses.some((response) => !response.ok)) throw new Error("Failed to fetch stats")
+      const [stats, customers, devices, tickets, revenue] = await Promise.all(
+        responses.map((response) => response.json())
+      )
+      setStats(stats)
+      setCustomersByPlan(customers)
+      setDevicesByStatus(devices)
+      setTicketsByStatus(tickets)
+      setRevenueByPlan(revenue)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error")

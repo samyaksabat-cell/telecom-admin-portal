@@ -1,72 +1,77 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type APIRequestContext } from "@playwright/test"
 
 const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8080"
 
 interface ApiCustomer {
   status: string
+  plan_id: number | null
   plan_name: string | null
 }
 
 interface ApiPlan {
+  id: number
   name: string
   monthly_price: number
 }
 
-/**
- * Cross-checks the dashboard aggregates against the raw customer and plan lists.
- * The seeded database contains suspended and cancelled subscribers, so any
- * aggregation that forgets to filter on ACTIVE shows up here as a mismatch.
- */
+async function collection<T>(request: APIRequestContext, path: string): Promise<T[]> {
+  const rows: T[] = []
+  for (let page = 0; ; page += 1) {
+    const response = await request.get(`${backendUrl}${path}?page=${page}`)
+    expect(response.ok()).toBeTruthy()
+    rows.push(...(await response.json()))
+    if (response.headers()["x-has-next"] !== "true") return rows
+  }
+}
+
+// The oracle joins by immutable IDs, not plan names, and includes all pages.
 test.describe("Dashboard revenue aggregates", () => {
   test("monthly revenue counts only active subscribers", async ({ request }) => {
-    const [statsRes, customersRes, plansRes] = await Promise.all([
+    const [statsRes, customers, plans] = await Promise.all([
       request.get(`${backendUrl}/api/dashboard/stats`),
-      request.get(`${backendUrl}/api/customers`),
-      request.get(`${backendUrl}/api/plans`),
+      collection<ApiCustomer>(request, "/api/customers"),
+      collection<ApiPlan>(request, "/api/plans"),
     ])
     expect(statsRes.ok()).toBeTruthy()
-    expect(customersRes.ok()).toBeTruthy()
-    expect(plansRes.ok()).toBeTruthy()
-
     const stats = await statsRes.json()
-    const customers: ApiCustomer[] = await customersRes.json()
-    const plans: ApiPlan[] = await plansRes.json()
-
-    const priceByPlan = new Map(plans.map((p) => [p.name, p.monthly_price]))
+    const priceByPlan = new Map(plans.map((p) => [p.id, p.monthly_price]))
     const expected = customers
-      .filter((c) => c.status === "ACTIVE" && c.plan_name !== null)
-      .reduce((sum, c) => sum + (priceByPlan.get(c.plan_name as string) ?? 0), 0)
-
+      .filter((c) => c.status === "ACTIVE" && c.plan_id !== null)
+      .reduce((sum, c) => sum + (priceByPlan.get(c.plan_id!) ?? 0), 0)
     expect(Number(stats.monthly_revenue)).toBeCloseTo(expected, 2)
   })
 
   test("active customer count matches the customer list", async ({ request }) => {
-    const [statsRes, customersRes] = await Promise.all([
+    const [statsRes, customers] = await Promise.all([
       request.get(`${backendUrl}/api/dashboard/stats`),
-      request.get(`${backendUrl}/api/customers`),
+      collection<ApiCustomer>(request, "/api/customers"),
     ])
-
+    expect(statsRes.ok()).toBeTruthy()
     const stats = await statsRes.json()
-    const customers: ApiCustomer[] = await customersRes.json()
-    const activeCount = customers.filter((c) => c.status === "ACTIVE").length
-
-    expect(stats.active_customers).toBe(activeCount)
+    expect(stats.active_customers).toBe(customers.filter((c) => c.status === "ACTIVE").length)
   })
 
-  test("revenue by plan excludes plans with no active subscribers", async ({ request }) => {
-    const [revenueRes, customersRes] = await Promise.all([
+  test("revenue by plan matches every active plan ID even with duplicate names", async ({
+    request,
+  }) => {
+    const [revenueRes, customers, plans] = await Promise.all([
       request.get(`${backendUrl}/api/dashboard/revenue-by-plan`),
-      request.get(`${backendUrl}/api/customers`),
+      collection<ApiCustomer>(request, "/api/customers"),
+      collection<ApiPlan>(request, "/api/plans"),
     ])
-
+    expect(revenueRes.ok()).toBeTruthy()
     const revenue: { name: string; revenue: number }[] = await revenueRes.json()
-    const customers: ApiCustomer[] = await customersRes.json()
-    const plansWithActive = new Set(
-      customers.filter((c) => c.status === "ACTIVE").map((c) => c.plan_name)
-    )
-
-    for (const row of revenue) {
-      expect(plansWithActive.has(row.name)).toBeTruthy()
-    }
+    const expected = plans
+      .filter((plan) => customers.some((c) => c.status === "ACTIVE" && c.plan_id === plan.id))
+      .map((plan) => ({
+        name: plan.name,
+        revenue:
+          plan.monthly_price *
+          customers.filter((c) => c.status === "ACTIVE" && c.plan_id === plan.id).length,
+      }))
+    // Compare a multiset so duplicate names remain separate rows.
+    const ordered = (rows: typeof revenue) =>
+      rows.map((row) => `${row.name}:${Number(row.revenue).toFixed(2)}`).sort()
+    expect(ordered(revenue)).toEqual(ordered(expected))
   })
 })

@@ -106,6 +106,18 @@ class DashboardControllerTest {
     }
 
     @Test
+    void revenueUsesPlanIdentityWhenNamesAreDuplicated() throws Exception {
+        Plan first = plan(10L, "Same", "10.00");
+        Plan second = plan(11L, "Same", "20.00");
+        when(planRepository.findAll()).thenReturn(List.of(first, second));
+        when(customerRepository.findByStatus(Customer.Status.ACTIVE)).thenReturn(
+                List.of(customer(10L, first, Customer.Status.ACTIVE), customer(11L, second, Customer.Status.ACTIVE)));
+
+        mockMvc.perform(get("/api/dashboard/revenue-by-plan")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].revenue").value(10)).andExpect(jsonPath("$[1].revenue").value(20));
+    }
+
+    @Test
     void customersByPlanReturnsOneEntryPerPlan() throws Exception {
         when(customerRepository.countByPlanName())
                 .thenReturn(List.of(new Object[] {"Basic", 2L}, new Object[] {"Standard", 1L}));

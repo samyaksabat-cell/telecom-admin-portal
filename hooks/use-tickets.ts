@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { createLogger } from "@/lib/logger"
-
-const log = createLogger("useTickets")
+import { usePagedRecords } from "@/hooks/use-paged-records"
+import { requireOk } from "@/lib/api"
 
 export interface Ticket {
   id: number
@@ -38,148 +36,45 @@ export interface TicketUpdate {
   status?: string
 }
 
-interface PagedResponse {
-  content: Ticket[]
-  page: number
-  totalPages: number
-  totalElements: number
-  hasNext: boolean
-}
-
 export function useTickets(filters: TicketFilters = {}) {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [hasNext, setHasNext] = useState(false)
-  const [totalElements, setTotalElements] = useState(0)
-  const pageRef = useRef(0)
-
-  const buildUrl = useCallback(
-    (pageNum: number) => {
-      const params = new URLSearchParams()
-      params.set("page", pageNum.toString())
-      params.set("size", "50")
-      if (filters.priority) params.set("priority", filters.priority)
-      if (filters.status) params.set("status", filters.status)
-      if (filters.customerId) params.set("customerId", filters.customerId.toString())
-      return `/api/tickets?${params.toString()}`
-    },
-    [filters.priority, filters.status, filters.customerId]
+  const query = new URLSearchParams()
+  if (filters.priority) query.set("priority", filters.priority)
+  if (filters.status) query.set("status", filters.status)
+  if (filters.customerId != null) query.set("customerId", String(filters.customerId))
+  const { records: tickets, ...page } = usePagedRecords<Ticket>(
+    `/api/tickets?${query}`,
+    "Failed to fetch tickets"
   )
 
-  const fetchTickets = useCallback(
-    async (reset = true) => {
-      try {
-        if (reset) {
-          setLoading(true)
-          pageRef.current = 0
-        } else {
-          setLoadingMore(true)
-          pageRef.current += 1
-        }
+  const createTicket = async (ticket: TicketCreate) => {
+    const response = await fetch("/api/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ticket),
+    })
+    await requireOk(response, "Failed to create ticket")
+    const created: Ticket = await response.json()
+    await page.refresh()
+    return created
+  }
 
-        log.info({ page: pageRef.current, filters }, "Fetching tickets")
-        const res = await fetch(buildUrl(pageRef.current))
-        if (!res.ok) throw new Error("Failed to fetch tickets")
-        const data: PagedResponse = await res.json()
-
-        if (reset) {
-          setTickets(data.content || [])
-        } else {
-          setTickets((prev) => [...prev, ...(data.content || [])])
-        }
-
-        setHasNext(data.hasNext ?? false)
-        setTotalElements(data.totalElements ?? 0)
-        setError(null)
-        log.debug(
-          { count: data.content?.length, totalElements: data.totalElements },
-          "Tickets fetched"
-        )
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Unknown error"
-        log.error({ error: e }, "Failed to fetch tickets")
-        setError(message)
-      } finally {
-        setLoading(false)
-        setLoadingMore(false)
-      }
-    },
-    [buildUrl, filters]
-  )
-
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasNext) {
-      fetchTickets(false)
-    }
-  }, [fetchTickets, loadingMore, hasNext])
-
-  const createTicket = useCallback(
-    async (ticket: TicketCreate) => {
-      log.info({ customerId: ticket.customerId }, "Creating ticket")
-      const res = await fetch("/api/tickets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ticket),
-      })
-      if (!res.ok) {
-        log.error({ status: res.status }, "Failed to create ticket")
-        throw new Error("Failed to create ticket")
-      }
-      const newTicket = await res.json()
-      log.info({ ticketId: newTicket.id }, "Ticket created")
-      fetchTickets(true)
-      return newTicket
-    },
-    [fetchTickets]
-  )
-
-  const updateTicket = useCallback(async (id: number, ticket: TicketUpdate) => {
-    log.info({ ticketId: id }, "Updating ticket")
-    const res = await fetch(`/api/tickets/${id}`, {
+  const updateTicket = async (id: number, ticket: TicketUpdate) => {
+    const response = await fetch(`/api/tickets/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ticket),
     })
-    if (!res.ok) {
-      log.error({ ticketId: id, status: res.status }, "Failed to update ticket")
-      throw new Error("Failed to update ticket")
-    }
-    const updated = await res.json()
-    log.info({ ticketId: id, status: updated.status }, "Ticket updated")
-    setTickets((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    await requireOk(response, "Failed to update ticket")
+    const updated: Ticket = await response.json()
+    await page.refresh()
     return updated
-  }, [])
-
-  const deleteTicket = useCallback(async (id: number) => {
-    log.info({ ticketId: id }, "Deleting ticket")
-    const res = await fetch(`/api/tickets/${id}`, {
-      method: "DELETE",
-    })
-    if (!res.ok) {
-      log.error({ ticketId: id, status: res.status }, "Failed to delete ticket")
-      throw new Error("Failed to delete ticket")
-    }
-    log.info({ ticketId: id }, "Ticket deleted")
-    setTickets((prev) => prev.filter((t) => t.id !== id))
-  }, [])
-
-  useEffect(() => {
-    fetchTickets(true)
-  }, [fetchTickets])
-
-  return {
-    tickets,
-    loading,
-    loadingMore,
-    error,
-    hasNext,
-    totalElements,
-    loadMore,
-    refresh: () => fetchTickets(true),
-    createTicket,
-    updateTicket,
-    deleteTicket,
   }
+
+  const deleteTicket = async (id: number) => {
+    const response = await fetch(`/api/tickets/${id}`, { method: "DELETE" })
+    await requireOk(response, "Failed to delete ticket")
+    await page.refresh()
+  }
+
+  return { tickets, ...page, createTicket, updateTicket, deleteTicket }
 }

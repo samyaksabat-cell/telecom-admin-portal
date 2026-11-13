@@ -39,11 +39,15 @@ A telecom user administration system built with Next.js and Spring Boot.
 - Node.js 22+
 - Java 21+
 - pnpm
+- Python 3 (for database seeding)
 
 ### Setup
 
 ```bash
-pnpm setup    # Install deps + seed database with production-like data
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r scripts/requirements.txt
+pnpm bootstrap    # Install deps + seed database with production-like data
 ```
 
 Or install without seeding:
@@ -69,13 +73,8 @@ pnpm setup:db   # Run seeder
 pnpm reset:db   # Delete DB + re-seed
 ```
 
-Create a Python virtual environment and install the pinned seeder dependency:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r scripts/requirements.txt
-```
+Keep the Python environment activated when running `pnpm setup:db` or `pnpm reset:db`.
+These commands replace existing demo data.
 
 ### Development
 
@@ -98,9 +97,10 @@ pnpm dev:backend    # Backend only
 ### Testing
 
 ```bash
-pnpm test           # All tests
+pnpm test           # Frontend + backend unit/integration tests
 pnpm test:frontend  # Vitest
 pnpm test:backend   # Gradle test
+pnpm test:e2e       # Playwright browser/API tests
 ```
 
 ### Linting
@@ -133,6 +133,15 @@ pnpm lint
 | `/api/dashboard/*` | GET                    | Dashboard statistics |
 
 ## API Documentation
+
+Customer, device, and plan list endpoints accept `page` (zero-based) and `size`
+(maximum 1000), and retain their array response format. Check the `X-Has-Next`
+and `X-Total-Count` response headers to retrieve the complete collection.
+
+The backend normalizes legacy epoch-millisecond timestamps to UTC text on
+startup, before becoming ready. Back up an existing database before upgrading.
+For device PUT requests, `customerId: null` clears the assignment; `ASSIGNED`
+requires a customer.
 
 Start the backend, then open the Swagger UI at
 `http://localhost:8080/swagger-ui.html`.

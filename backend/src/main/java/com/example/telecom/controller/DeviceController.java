@@ -7,7 +7,11 @@ import com.example.telecom.repository.DeviceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -31,12 +35,15 @@ public class DeviceController {
     }
 
     @GetMapping
-    public List<DeviceResponse> getAllDevices() {
+    public ResponseEntity<List<DeviceResponse>> getAllDevices(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "1000") int size) {
         LOG.info("Fetching all devices");
-        List<DeviceResponse> devices = repository.findAll(PageRequest.of(0, 1000)).stream().map(DeviceResponse::from)
-                .toList();
+        Page<Device> result = repository
+                .findAll(PageRequest.of(Math.max(0, page), Math.max(1, Math.min(size, 1000)), Sort.by("id")));
+        List<DeviceResponse> devices = result.stream().map(DeviceResponse::from).toList();
         LOG.debug("Found {} devices", devices.size());
-        return devices;
+        return ResponseEntity.ok().header("X-Has-Next", Boolean.toString(result.hasNext()))
+                .header("X-Total-Count", Long.toString(result.getTotalElements())).body(devices);
     }
 
     @GetMapping("/{id}")
@@ -78,7 +85,8 @@ public class DeviceController {
             return ResponseEntity.notFound().build();
         }
         Device device = existing.get();
-        Customer customer = device.getCustomer();
+        // PUT replaces the assignment, including an explicitly cleared customer.
+        Customer customer = null;
         if (request.customerId() != null) {
             Optional<Customer> requested = customerRepository.findById(request.customerId());
             if (requested.isEmpty()) {
@@ -99,12 +107,9 @@ public class DeviceController {
         Long oldCustomerId = device.getCustomer() == null ? null : device.getCustomer().getId();
         Long newCustomerId = customer == null ? null : customer.getId();
         boolean changed = !Objects.equals(oldCustomerId, newCustomerId);
-        if (status != null) {
-            device.setStatus(Device.Status.valueOf(status));
-        } else if (changed && customer != null) {
-            device.setStatus(Device.Status.ASSIGNED);
-        }
-        if (device.getStatus() == Device.Status.AVAILABLE) {
+        Device.Status newStatus = assignmentStatus(device, customer, status, changed);
+        device.setStatus(newStatus);
+        if (newStatus == Device.Status.AVAILABLE) {
             device.setCustomer(null);
             device.setAssignedAt(null);
         } else {
@@ -113,6 +118,17 @@ public class DeviceController {
                 device.setAssignedAt(customer == null ? null : Instant.now().truncatedTo(ChronoUnit.MILLIS));
             }
         }
+    }
+
+    private static Device.Status assignmentStatus(Device device, Customer customer, String status, boolean changed) {
+        Device.Status result = status == null ? device.getStatus() : Device.Status.valueOf(status);
+        if (status == null && changed && customer != null) {
+            result = Device.Status.ASSIGNED;
+        }
+        if (result == Device.Status.ASSIGNED && customer == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An assigned device requires a customer");
+        }
+        return result;
     }
 
     @DeleteMapping("/{id}")

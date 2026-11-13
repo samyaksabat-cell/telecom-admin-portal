@@ -71,6 +71,9 @@ public class SupportTicketController {
     @PostMapping
     public ResponseEntity<TicketResponse> createTicket(@RequestBody TicketRequest request) {
         LOG.info("Creating ticket");
+        if (request.customerId() == null || request.priority() == null) {
+            return ResponseEntity.badRequest().build();
+        }
         return customerRepository.findById(request.customerId()).map(customer -> {
             SupportTicket ticket = new SupportTicket(customer, request.subject(), request.description(),
                     SupportTicket.Priority.valueOf(request.priority()));

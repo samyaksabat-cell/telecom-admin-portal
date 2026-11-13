@@ -47,8 +47,10 @@ class EditBehaviorTest {
         when(tickets.findById(1L)).thenReturn(Optional.of(ticket));
         when(devices.save(any(Device.class))).thenAnswer(i -> i.getArgument(0));
         when(tickets.save(any(SupportTicket.class))).thenAnswer(i -> i.getArgument(0));
-        mvc = MockMvcBuilders.standaloneSetup(new DeviceController(devices, customers),
-                new SupportTicketController(tickets, customers)).build();
+        mvc = MockMvcBuilders
+                .standaloneSetup(new DeviceController(devices, customers),
+                        new SupportTicketController(tickets, customers))
+                .setControllerAdvice(new ApiExceptionHandler()).build();
     }
 
     @ParameterizedTest
@@ -107,6 +109,32 @@ class EditBehaviorTest {
         verify(devices, never()).save(any(Device.class));
         assertEquals(Device.Status.ASSIGNED, device.getStatus());
         assertEquals(ORIGINAL_TIME, device.getAssignedAt());
+    }
+
+    @Test
+    void clearingLostCustomerRemovesAssignment() throws Exception {
+        updateDevice("LOST", null);
+        assertNull(device.getCustomer());
+        assertNull(device.getAssignedAt());
+        assertEquals(Device.Status.LOST, device.getStatus());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "PUT"})
+    void assignedRequiresCustomer(String method) throws Exception {
+        mvc.perform((method.equals("POST") ? post("/api/devices") : put("/api/devices/1"))
+                .contentType(MediaType.APPLICATION_JSON).content(deviceBody("ASSIGNED", null)))
+                .andExpect(status().isBadRequest());
+        verify(devices, never()).save(any(Device.class));
+        assertSame(customer, device.getCustomer());
+        assertEquals(ORIGINAL_TIME, device.getAssignedAt());
+    }
+
+    @Test
+    void invalidDeviceStatusIsClientError() throws Exception {
+        mvc.perform(put("/api/devices/1").contentType(MediaType.APPLICATION_JSON).content(deviceBody("INVALID", 1L)))
+                .andExpect(status().isBadRequest());
+        verify(devices, never()).save(any(Device.class));
     }
 
     @Test

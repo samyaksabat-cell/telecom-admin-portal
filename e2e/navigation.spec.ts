@@ -25,15 +25,20 @@ test.describe("Navigation", () => {
   })
 
   test("sidebar navigation works correctly", async ({ page }) => {
+    // Development rendering of the full customer list can exceed the default wait under parallel load.
+    const navigation = { timeout: 15000 }
     await page.goto("/dashboard")
 
     await page.getByRole("link", { name: /customers/i }).click()
-    await expect(page).toHaveURL(/.*customers/)
+    await expect(page).toHaveURL(/.*customers/, navigation)
+    await expect(page.locator("table")).toBeVisible()
 
     await page.getByRole("link", { name: /plans/i }).click()
-    await expect(page).toHaveURL(/.*plans/)
+    await expect(page).toHaveURL(/.*plans/, navigation)
+    await expect(page.locator("table")).toBeVisible()
 
     await page.getByRole("link", { name: /devices/i }).click()
-    await expect(page).toHaveURL(/.*devices/)
+    await expect(page).toHaveURL(/.*devices/, navigation)
+    await expect(page.locator("table")).toBeVisible()
   })
 })

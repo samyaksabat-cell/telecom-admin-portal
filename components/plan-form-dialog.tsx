@@ -45,10 +45,12 @@ function PlanForm({
   const [smsLimit, setSmsLimit] = useState(plan?.sms_limit?.toString() ?? "")
   const [isActive, setIsActive] = useState(plan?.is_active ?? true)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const data: PlanCreate | PlanUpdate = {
         name,
@@ -60,6 +62,8 @@ function PlanForm({
       }
       await onSubmit(data)
       onCancel()
+    } catch (failure) {
+      setSubmitError(failure instanceof Error ? failure.message : "Failed to save record")
     } finally {
       setSubmitting(false)
     }
@@ -75,6 +79,11 @@ function PlanForm({
             : "Fill in the details to create a new service plan."}
         </DialogDescription>
       </DialogHeader>
+      {submitError && (
+        <p role="alert" className="text-sm text-red-500">
+          {submitError}
+        </p>
+      )}
       <div className="grid gap-4 py-4">
         <div className="space-y-2">
           <Label htmlFor="name">Plan Name</Label>
