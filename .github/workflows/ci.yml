@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test error-to-issue automation
+        run: node --test .github/scripts/ci-error-issues.test.mjs
+
       - name: Check formatting
         run: pnpm format:check
 

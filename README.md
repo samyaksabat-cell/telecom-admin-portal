@@ -315,6 +315,33 @@ Standard Spring Boot overrides still work, for example
 logging is enabled with `LOGGING_FILE_NAME`, also set
 `LOGGING_STRUCTURED_FORMAT_FILE=logstash` to use the same JSON format there.
 
+### CI errors to actionable issues
+
+The [CI error to issue workflow](.github/workflows/error-to-issue.yml) tracks errors
+from the existing frontend, backend, and E2E CI jobs. After a default-branch push
+fails, it creates one GitHub issue per failed job with the commit, failed steps,
+links to logs and available test artifacts, and reproduction/triage instructions.
+Repeated failures update the same issue; a successful job closes it and a later
+failure reopens it. Cancelled/skipped jobs and PR runs do not change issues.
+Older runs are ignored once a newer push exists, including while it is running.
+
+No external error-tracker account or secret is needed. After merging to the default
+branch, keep repository **Issues** and **Actions** enabled and allow the workflow's
+`GITHUB_TOKEN` to use `actions: read` and `issues: write` (organization policies must
+permit these). The workflow only executes trusted default-branch code and never
+downloads artifacts or copies raw logs into issues. This tracks CI errors, not
+deployed application exceptions; backend JSON logs remain local unless you configure
+a separate runtime monitoring service.
+
+To verify after merge, inspect **Actions → CI error to issue** following a failing
+default-branch CI run. Confirm the issue links to the failed job, then rerun CI
+after fixing it and confirm the same issue closes. Do not deliberately break the
+default branch to test this. Run the offline lifecycle regression tests with:
+
+```bash
+node --test .github/scripts/ci-error-issues.test.mjs
+```
+
 ## Application Pages
 
 | Page      | URL          | Description           |

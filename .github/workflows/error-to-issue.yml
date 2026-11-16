@@ -1,0 +1,40 @@
+name: CI error to issue
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-error-to-issue
+  cancel-in-progress: false
+
+jobs:
+  track-errors:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      # workflow_run is privileged: never check out the triggering SHA, download
+      # artifacts, or execute code from the failed run or a pull request.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Create, update, or resolve CI error issues
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea4 # v7
+        with:
+          script: |
+            const { syncCiIssues } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/ci-error-issues.mjs`)
+            await syncCiIssues({ github, context })
