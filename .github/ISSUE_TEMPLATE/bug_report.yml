@@ -1,6 +1,7 @@
 name: Bug report
 description: Report a reproducible problem with the telecom demo portal.
 title: "[Bug]: "
+labels: ["type:bug"]
 body:
   - type: markdown
     attributes:

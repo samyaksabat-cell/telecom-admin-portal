@@ -1,0 +1,50 @@
+name: Issue labels
+
+on:
+  pull_request:
+    paths:
+      - ".github/labels.json"
+      - ".github/scripts/sync-labels*"
+      - ".github/workflows/labels.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/labels.json"
+      - ".github/scripts/sync-labels*"
+      - ".github/workflows/labels.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - run: node --test .github/scripts/sync-labels.test.mjs
+
+  sync:
+    needs: validate
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    concurrency:
+      group: repository-label-sync
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Create or update managed labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/sync-labels.mjs

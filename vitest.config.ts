@@ -8,7 +8,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./__tests__/setup.ts"],
-    exclude: ["**/node_modules/**", "**/e2e/**"],
+    // .github/scripts tests use node:test and run in the Issue labels workflow.
+    exclude: ["**/node_modules/**", "**/e2e/**", ".github/**"],
     reporters: ["default", "json", "junit"],
     outputFile: {
       json: "./test-results/results.json",
