@@ -252,6 +252,44 @@ cd backend
 ./gradlew build
 ```
 
+### Build performance tracking
+
+CI measures wall-clock duration of the frontend production build and the backend
+`build -x test --profile` step, excluding dependency installation, earlier checks,
+and baseline downloads. Failed builds retain their exit code and timing too.
+Each job adds a build performance summary and uploads a
+`frontend-build-performance` or `backend-build-performance` artifact containing
+`metrics.json`, retained for 90 days. Metrics include duration, command, commit,
+run/attempt, runner OS/architecture, exit code, and Next.js cache-hit state.
+Backend cache state is reported as unknown; see setup-gradle's summary for details.
+
+Using a read-only Actions token, the tracker downloads the matching artifact from
+the latest successful `main` CI run. Successful builds with the same command and
+runner OS/architecture report the duration difference. A slowdown exceeding
+**both 20% and 10 seconds** emits a warning, not a flaky merge gate. Missing,
+expired, or incompatible baselines do not block builds. The first successful main
+run after merging establishes the baseline. Download artifacts from successive
+CI runs to inspect trends; this is build-step timing, not total pipeline latency.
+
+Next.js compiler data in `.next/cache` is restored using a lockfile-scoped cache
+with per-commit keys. An exact cache miss can still restore an older compatible
+cache. Gradle's task-output build cache is enabled and persisted by setup-gradle.
+The separate `gradle-build-profile` artifact includes task/configuration timing
+and cache/up-to-date outcomes to identify expensive tasks. Compare similar cache
+conditions before acting on a warning; use profiles to target optimizations
+rather than raising the warning thresholds.
+
+To collect the same metrics locally after installing dependencies:
+
+```bash
+python3 scripts/measure_build.py --component frontend --output build-metrics/frontend/metrics.json -- pnpm build
+python3 scripts/measure_build.py --component backend --cwd backend --output build-metrics/backend/metrics.json -- ./gradlew build -x test --profile
+python3 -m unittest discover -s scripts -p 'test_measure_build.py'
+```
+
+Local collection skips the GitHub baseline lookup. Metrics are git-ignored;
+Gradle profiles are under `backend/build/reports/profile/`.
+
 ### Backend logging
 
 The backend uses Spring Boot's built-in Logstash JSON console format. Each SLF4J
