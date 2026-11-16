@@ -35,8 +35,9 @@ edit flow spanning React and the API could be `priority:P1`, `type:bug`,
 replacing the old priority rather than adding another.
 
 Bug and feature forms assign the corresponding type label. Maintainers verify
-the type and assign priority and areas after reviewing impact. Blank issues and
-maintenance tasks need all three categories assigned manually. Existing GitHub
+the type and assign priority and areas after reviewing impact, using the form's
+"Affected area" answer as a starting point. Maintenance tasks need all three
+categories assigned manually. Existing GitHub
 defaults are preserved for compatibility, but use the prefixed taxonomy for new
 triage. During normal backlog triage, replace `bug` with `type:bug` and
 `enhancement` with `type:feature`; keep supplemental labels such as `help wanted`,

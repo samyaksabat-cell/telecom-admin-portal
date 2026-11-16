@@ -1,6 +1,7 @@
 name: Feature request
 description: Propose an improvement with a clear use case and acceptance criteria.
 title: "[Feature]: "
+labels: ["type:feature"]
 body:
   - type: markdown
     attributes:
